@@ -1,0 +1,53 @@
+//Trigger set to activate this function when the spreadsheet is edited
+//Gathers an array of all data values in the spreadsheet and the value of the edited cell
+function valueFinder() {
+  var mySheet = SpreadsheetApp.getActiveSpreadsheet();
+  var allVals = mySheet.getDataRange().getDisplayValues();
+  var curCell = mySheet.getCurrentCell();
+  var value = curCell.getValue();
+  if (value == "NR" || value == "M") { //If assignment is missing or needs improvement
+    getEmail(curCell, value, allVals);
+  }
+}
+
+//Gets emails (second column, same row), activity names (first row, same column), and student name (first column, same row) and calls a pop-up function
+function getEmail(curCell, curValue, allVals) {
+  var row = curCell.getRow();
+  var col = curCell.getColumn();
+  var email = allVals[row - 1][1];
+  var activity = allVals[0][col - 1];
+  var student = allVals[row - 1][0];
+  if (showAlert(student, activity)) { //Sends an email to the student only if "Yes" is selected in the pop up box
+    sendEmail(email, activity, curValue);
+  }
+}
+
+//Creates a pop up box asking for confirmation to send an email
+function showAlert(student, activity) {
+  var ui = SpreadsheetApp.getUi();
+  var result = ui.alert(
+    "Please confirm",
+    `Send email to ${student} about ${activity}?`,
+    ui.ButtonSet.YES_NO);
+  if (result == ui.Button.YES) {
+    return true;
+  }
+}
+
+//Sends an email to the student, messages composed by teacher
+function sendEmail(email, activity, value) {
+  var message;
+  var subject;
+  if (value == "NR") {
+    message = `You have received a mark of 'Needs Revision' on your ${activity}, and you will not receive credit for this assignment until you have raised your mark to 'Proficient.' Please contact me (in person or by responding to this email) within 48 hours to make an appointment in which we will discuss how you can revise this assignment. If you would like for this assignment to count as one of your allotted 'Missed' assignments for the semester, feel free to do nothing (this is not an option for Major Essays, your final, or the e-Portfolio). <br><br>If this assignment is ON KRITIK: this means that you received an overall score of 50% or lower (meaning you didn’t follow assignment instructions, you did not complete your evaluations feedback, or a combination of the two). Make sure you understand why you got the score you did before our meeting. <br><br>If this assignment is a MAJOR ESSAY: Make sure to read all feedback left on your essay in Google Drive before our meeting. DO NOT come to our meeting with no idea of what you need to fix in your essay. The meeting should be about hammering out the specifics of your revisions, not me giving you a broad overview! <br><br>-Prof. Golliher`;
+    subject = "ENGL 211C: Assignment Needs Revision";
+  }
+  if (value == "M") {
+    message = `You have received a mark of 'Missing' on your ${activity}, which means that the assignment was never turned in. If you think this message has been sent in error (you actually did turn in the assignment), please contact me (in person or by responding to this email) ASAP to correct the mistake. If you would like for this assignment to count as one of your allotted 'Missed' assignments for the semester, feel free to do nothing (this is not an option for Major Essays, your final, or the e-Portfolio). <br><br>If this assignment is LOW-STAKES (on Kritik or in class): You do not need to take action. Low-stakes assignments cannot be made up. <br><br>If this assignment is HIGH-STAKES (a major essay, our mandatory conference, your final, or the e-Portfolio): <b><font color="red">You are in danger of violating your contract and failing the class. Contact me ASAP to discuss your options.</font></b>  <br><br>-Prof. Golliher`;
+    subject = "ENGL 211C: Assignment Missing";
+  }
+  MailApp.sendEmail(email, subject, '', {
+    htmlBody: message //html ensures proper formatting for email
+  });
+  Logger.log(`Email sent to ${email} about ${activity}`);
+}
